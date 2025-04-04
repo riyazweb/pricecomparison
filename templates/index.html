@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Comparator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* bg-slate-50 */
+        }
+        .star-rating .fa-star, .star-rating .fa-star-half-alt { color: #f59e0b; } /* Amber-500 */
+        .star-rating .far.fa-star { color: #d1d5db; } /* Gray-300 */
+        .seller-logo { height: 1.5rem; width: auto; object-fit: contain; }
+        /* Style for the active thumbnail */
+        .thumbnail-active {
+            border-color: #3b82f6; /* Blue-500 */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans">
+
+    <div class="max-w-4xl mx-auto my-8 p-4 md:p-6">
+
+        <!-- Search Form -->
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200 mb-8">
+            <form method="POST" action="/" class="max-w-3xl mx-auto">
+                <div class="flex justify-center">
+                    <img src="{{ url_for('static', filename='image.png') }}" alt="Image">
+                </div>
+                <div class="flex flex-col md:flex-row gap-3">
+                  
+                    <div class="flex-1">
+                        <label for="product_url" class="sr-only">Enter Amazon or Flipkart Product URL:</label>
+                        <input type="url" id="product_url" name="product_url"
+                            value="{{ input_url | default('', true) }}"
+                            placeholder="Paste Amazon or Flipkart Product URL here..."
+                            class="w-full px-4 py-3 border border-gray-300 bg-gray-50 text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 placeholder-gray-500 text-sm" required>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full md:w-auto bg-white text-gray-800 border border-gray-400 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 font-medium py-3 px-6 rounded-lg transition duration-200 ease-in-out shadow-sm hover:shadow">
+                            <span class="flex items-center justify-center gap-2 text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Compare Prices
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Area: Only shown after form submission (POST request) -->
+        {% if request.method == 'POST' %}
+            <div class="space-y-8">
+
+                <!-- Error Messages -->
+                {% if error %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-center text-sm">{{ error }}</div>
+                {% endif %}
+
+                <!-- Product Info Section -->
+                {% if product_info %}
+                <div class="flex flex-col md:flex-row items-start gap-6 md:gap-8 bg-white p-4 md:p-6 rounded-lg border border-gray-200 shadow-sm">
+
+                    <!-- Product Image Section (with Thumbnails RESTORED) -->
+                    <div class="w-full md:w-1/3 flex-shrink-0">
+                        {% if product_info.thumbnails and product_info.thumbnails|length > 0 %}
+                            <div class="relative">
+                                <!-- Main Image Display -->
+                                <div class="aspect-square bg-white rounded-lg flex items-center justify-center border border-gray-200 overflow-hidden shadow-sm mb-3">
+                                    <img id="mainProductImage" src="{{ product_info.thumbnails[0] }}" alt="{{ product_info.name | escape }}" class="w-full h-full object-contain transition-opacity duration-300 ease-in-out">
+                                </div>
+
+                                <!-- Thumbnail Grid -->
+                                {% if product_info.thumbnails|length > 1 %}
+                                    <div class="grid grid-cols-4 gap-2">
+                                        {% for thumbnail in product_info.thumbnails %}
+                                            {% if loop.index <= 4 %} {# Limit to max 4 thumbnails for this layout #}
+                                                <div class="aspect-square bg-white rounded border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-400 transition-colors duration-200 {% if loop.index == 1 %}thumbnail-active{% endif %}"
+                                                     onclick="changeImage('{{ thumbnail }}', this)">
+                                                    <img src="{{ thumbnail }}" alt="Thumbnail {{ loop.index }}" class="w-full h-full object-contain">
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <!-- Placeholder If No Images -->
+                            <div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Product Details Section -->
+                    <div class="w-full md:w-2/3 flex flex-col gap-2">
+                        <h1 class="text-base md:text-lg font-medium text-gray-800 leading-snug">
+                            {{ product_info.name | default('Product Name Not Available', true) }}
+                        </h1>
+                        <div class="flex items-center gap-2 text-sm mt-1">
+                            <!-- Static example rating -->
+                            <span class="text-orange-500 font-semibold">3.9</span>
+                            <div class="star-rating flex items-center text-xs">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i><i class="far fa-star"></i>
+                            </div>
+                            <span class="text-gray-500">231 Ratings</span>
+                        </div>
+                         <div class="flex items-center gap-3 mt-3">
+                             <img src="https://img.icons8.com/color/48/amazon.png" alt="Amazon Logo" class="seller-logo">
+                             <div class="flex items-baseline gap-2">
+                                 <span class="text-2xl md:text-3xl font-bold text-gray-900">
+                                    {{ product_info.price | default('N/A', true) }}
+                                </span>
+                                 {% if product_info.original_price %}
+                                 <span class="text-sm md:text-base text-gray-500 line-through">
+                                    {{ product_info.original_price }}
+                                </span>
+                                 {% endif %}
+                             </div>
+                         </div>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-4">
+                           <div class="flex items-center gap-3 bg-gray-100 rounded-full px-3 py-1.5 border border-gray-200">
+                               <span class="text-sm text-gray-600">Share on</span>
+                               <button class="text-gray-500 hover:text-green-600 transition-colors"><i class="fab fa-whatsapp fa-lg"></i></button>
+                               <button class="text-gray-500 hover:text-blue-600 transition-colors"><i class="far fa-copy fa-lg"></i></button>
+                           </div>
+                     
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Alternative Prices Section -->
+                {% if alternatives is defined and alternatives is not none %}
+                    <div class="bg-white p-4 md:p-6 rounded-lg border border-gray-200 shadow-sm">
+                        <div class="mb-4">
+                            <h2 class="text-base font-semibold text-gray-800">Found {{ alternatives | length }} more prices</h2>
+                        </div>
+
+                        {% if alternatives %}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {% for item in alternatives %}
+                                    <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between shadow-sm hover:shadow transition-shadow duration-200">
+                                        <div class="flex items-center gap-3 overflow-hidden">
+                                            {% if 'amazon' in item.seller | lower %}
+                                                 <img src="https://img.icons8.com/color/48/amazon.png" alt="Amazon Logo" class="seller-logo flex-shrink-0">
+                                            {% elif 'flipkart' in item.seller | lower %}
+                                                 <img src="https://compare.buyhatke.com/images/site_icons_m/flipkart.png" alt="Flipkart Logo" class="seller-logo flex-shrink-0">
+                                            {% elif 'croma' in item.seller | lower %}
+                                                 <img src="https://compare.buyhatke.com/images/site_icons_m/croma.png" alt="Croma Logo" class="seller-logo flex-shrink-0">
+                                            {% elif 'jiomart' in item.seller | lower %}
+                                                 <img src="https://compare.buyhatke.com/images/site_icons_m/jiomart.png" alt="JioMart Logo" class="seller-logo flex-shrink-0">
+                                            {% elif 'vijay sales' in item.seller | lower or 'vsales' in item.seller | lower %}
+                                                 <img src="https://compare.buyhatke.com/images/site_icons_m/vsales.png" alt="Vijay Sales Logo" class="seller-logo flex-shrink-0">
+                                            {% else %}
+                                                 <div class="w-6 h-6 bg-gray-200 rounded-full flex-shrink-0"></div>
+                                            {% endif %}
+                                            <div class="flex-grow overflow-hidden">
+                                                {% if item.title and item.title != 'N/A' %}
+                                                <p class="text-xs text-gray-600 truncate" title="{{ item.title | escape }}">{{ item.title }}</p>
+                                                {% else %}
+                                                 <p class="text-xs text-gray-600 truncate">Product Title Placeholder...</p>
+                                                {% endif %}
+                                                <p class="text-sm font-semibold text-gray-900 mt-0.5">
+                                                    {{ item.price | default('N/A', true) }}
+                                                    <span class="text-xs font-normal text-gray-500">(+shipping)</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                         <a href="{{ item.link | default('#', true) }}" target="_blank" rel="noopener noreferrer"
+                                            class="ml-2 flex-shrink-0 bg-orange-100 text-orange-700 text-xs font-medium py-1 px-3 rounded-md hover:bg-orange-200 transition duration-200 whitespace-nowrap">
+                                            Buy →
+                                         </a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% elif not error %}
+                             <div class="text-center py-8 bg-gray-50 rounded-lg border border-gray-200 mt-4">
+                                 <p class="text-gray-600 text-sm">No alternative prices found for this product.</p>
+                             </div>
+                        {% endif %}
+                    </div>
+                {% elif not error and product_info is none %}
+                     <div class="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg text-center text-sm">Could not retrieve product details. Please check the URL or try again.</div>
+                {% endif %}
+
+                <!-- Lowest Price Recommendation Section -->
+                {% if lowest_price_option %}
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-md">
+                        <h2 class="text-lg font-bold text-green-700 mb-2 text-center">Best Deal Available</h2>
+                        <p class="text-sm text-gray-800 text-center mb-4">We recommend buying from:</p>
+                        
+                        <div class="flex items-center justify-center gap-6">
+                            <div class="flex flex-col items-center">
+                                {% if 'amazon' in lowest_price_option.seller | lower %}
+                                    <img src="https://img.icons8.com/color/48/amazon.png" alt="Amazon Logo" class="h-12 w-auto object-contain mb-2">
+                                {% elif 'flipkart' in lowest_price_option.seller | lower %}
+                                    <img src="https://compare.buyhatke.com/images/site_icons_m/flipkart.png" alt="Flipkart Logo" class="h-12 w-auto object-contain mb-2">
+                                {% elif 'croma' in lowest_price_option.seller | lower %}
+                                    <img src="https://compare.buyhatke.com/images/site_icons_m/croma.png" alt="Croma Logo" class="h-12 w-auto object-contain mb-2">
+                                {% elif 'jiomart' in lowest_price_option.seller | lower %}
+                                    <img src="https://compare.buyhatke.com/images/site_icons_m/jiomart.png" alt="JioMart Logo" class="h-12 w-auto object-contain mb-2">
+                                {% elif 'vijay sales' in lowest_price_option.seller | lower or 'vsales' in lowest_price_option.seller | lower %}
+                                    <img src="https://compare.buyhatke.com/images/site_icons_m/vsales.png" alt="Vijay Sales Logo" class="h-12 w-auto object-contain mb-2">
+                                {% else %}
+                                    <div class="w-12 h-12 bg-gray-100 rounded-full mb-2 flex items-center justify-center">
+                                        <span class="text-gray-800 font-bold text-xl">{{ lowest_price_option.seller[:1] }}</span>
+                                    </div>
+                                {% endif %}
+                                <span class="font-medium text-gray-800">{{ lowest_price_option.seller }}</span>
+                            </div>
+                            
+                            <div class="flex flex-col items-center">
+                                <span class="text-3xl font-bold text-green-600">{{ lowest_price_option.price }}</span>
+                                <span class="text-xs text-gray-700 mt-1">Lowest Price Available</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-center">
+                            <a href="{{ lowest_price_option.link | default('#', true) }}" target="_blank" rel="noopener noreferrer" 
+                               class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                Buy at Best Price
+                            </a>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <p class="text-xs text-gray-600">Price shown is the lowest we found across all available retailers</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                 <footer class="text-center pt-4">
+                    <p class="text-gray-500 text-xs">ok.</p>
+                    <p class="text-gray-400 text-xs mt-1">CHAT GPT CANT MAKE EVERYTHING</p>
+                 </footer>
+
+            </div>
+        {% endif %}
+
+    </div>
+
+    <!-- JavaScript for Image Thumbnail Click -->
+    <script>
+        function changeImage(newSrc, clickedElement) {
+            const mainImage = document.getElementById('mainProductImage');
+            if (mainImage) {
+                // Optional: Add fade effect
+                mainImage.style.opacity = '0';
+                setTimeout(() => {
+                    mainImage.src = newSrc;
+                    mainImage.style.opacity = '1';
+                }, 150); // Should match transition duration if added via CSS
+            }
+
+            // Remove active class from all thumbnails
+            const thumbnails = document.querySelectorAll('.thumbnail-active');
+            thumbnails.forEach(thumb => thumb.classList.remove('thumbnail-active'));
+
+            // Add active class to the clicked thumbnail
+            if (clickedElement) {
+                clickedElement.classList.add('thumbnail-active');
+            }
+        }
+    </script>
+
+</body>
+</html>
